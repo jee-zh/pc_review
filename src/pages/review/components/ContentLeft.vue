@@ -1,33 +1,52 @@
 <template>
   <div class="main-content-left">
-    <div class="title-panel">
+    <div class="title-panel" v-if="isShow">
       <!-- <div class="title">播放视频</div> -->
       <el-popover
         placement="right-end"
-        width="640"
-        height="360"
-        @hide="handleVideoPaued"
-        trigger="click">
-        <Xgplayer :config="config" @player="Player = $event"/>
-        <el-button slot="reference" class="title" @click.native="handleVideoClick">播放视频</el-button>
+        width="580"
+        height="450"
+        trigger="click"
+        >
+        <iframe :src="videoUrl" frameborder="0" scrolling="no" width="580" height="450"></iframe>
+        <el-button slot="reference" class="title">播放视频</el-button>
       </el-popover>
-      <a href="#" class="back">返回库</a>
+      <a href="javascript:void(0)" class="back" @click="returnBack">返回库</a>
     </div>
-    <div class="content-details">
-      <div class="video-list return-prev">返回上页</div>
-      <div class="video-list" v-for="item of 62" :key="item"></div><div class="video-list return-more">查看更多</div>
+    <div class="content-details clearfix" v-if="videoBoxData.items && videoBoxData.items[index]" ref="details">
+      <el-scrollbar style="height:100%">
+        <!-- <div class="video-list return-prev">返回上页</div> -->
+        <viewer :images="imgArrays">
+          <div class="video-list" v-for="(item,k) of imgArrays" :key="item" v-if="k<imgArrayIndex">
+            <img :src="item">
+          </div>
+        </viewer>
+        <div class="video-list return-more" v-if="imgArrays.length>=(imgArrayIndex+1)" @click="viewMore">查看更多</div>
+      </el-scrollbar>
     </div>
-    <div class="bottom-area">
-      <div class="btn prev-btn on"></div>
-      <div class="btn next-btn on"></div>
-      <div class="pages"><em>2</em>/25</div>
+    <div class="bottom-area" v-if="isShow">
+      <div class="btn prev-btn" :class="{on: index > 0}" @click="handlePageClick(-1)" @keyup.left="handlePageClick(-1)"></div>
+      <div class="btn next-btn" :class="{on: index < videoBoxData.totalCount-1}"  @click="handlePageClick(1)"></div>
+      <div class="pages" v-if="videoBoxData.items"><em>{{videoBoxData.items.length>0 ? (index+1) : 0}}</em>/{{videoBoxData.items.length ? videoBoxData.items.length : 0}}</div>
+    </div>
+    <div class="blank-page" v-if="!(videoBoxData.items && videoBoxData.items[index])">
+      <img src="../../images/kong_icon.png" width="300" class="blank-image">
+      <p class="blank-infos">先领任务再查询</p>
     </div>
   </div>
 </template>
 <script>
-import Xgplayer from 'xgplayer-vue'
+import { store, mutations } from '@/store/store'
+import { backStockClick } from '../../api/index.js'
+import { Loading } from 'element-ui'
 export default {
   name: 'ContentLeft',
+  props: {
+    isShow: {
+      type: Boolean,
+      default: false
+    }
+  },
   data () {
     return {
       config: {
@@ -39,25 +58,101 @@ export default {
         height: 360
       },
       Player: null,
-      clickVideo: true
+      clickVideo: true,
+      imgArrayIndex: 63,
+      videoUrl: ''
     }
   },
-  components: {
-    Xgplayer
+  computed: {
+    videoBoxData () {
+      return store.videoList
+    },
+    index () {
+      return store.index
+    },
+    imgArrays () {
+      this.setVideoUrl()
+      return this.videoBoxData.items[this.index].imgUrls
+    }
+  },
+  mounted () {
+    document.onkeydown = () => {
+      if (this.isShow) {
+        let key = window.event.keyCode
+        if (key === 37) {
+          this.handlePageClick(-1)
+        } else if (key === 39) {
+          this.handlePageClick(1)
+        }
+      }
+    }
   },
   methods: {
-    handleVideoClick () {
-      this.Player.play()
+    // 切换页码
+    handlePageClick (flag) {
+      if (flag === -1) {
+        if (this.index > 0) {
+          mutations.changeIndex(store.index - 1)
+        }
+      } else {
+        if (this.index < this.videoBoxData.totalCount - 1) {
+          mutations.changeIndex(store.index + 1)
+        }
+      }
+      this.$emit('changeRadio')
+      this.imgArrayIndex = 63
+      this.setVideoUrl()
     },
-    handleVideoPaued () {
-      this.Player.pause()
+    // 设置视频嵌套地址
+    setVideoUrl () {
+      this.videoUrl = `http://shenhe.pxtadmin.com/Aspx/ComVideoPlayer.aspx?videoid=${this.videoBoxData.items[this.index].videoId}`
+    },
+    // 查看更多
+    viewMore () {
+      this.imgArrayIndex = this.videoBoxData.items[this.index].imgUrls.length
+      this.$refs.details.style.height = 'auto'
+    },
+    // 返回库
+    returnBack () {
+      let {auditId, videoId} = this.videoBoxData.items[this.index]
+      this.loading = Loading.service({
+        text: '加载中~'
+      })
+      backStockClick({
+        auditId,
+        videoId
+      }).then((res) => {
+        if (res.code === 1) {
+          this.$message({
+            message: res.msg,
+            type: 'success',
+            duration: 1500
+          })
+          // 当前视频删除
+          mutations.deleteVideo()
+          this.loading.close()
+        }
+      })
     }
   }
 }
 </script>
 <style lang="stylus" scoped>
+.main-content-left >>> .el-scrollbar__wrap {
+  overflow-x: hidden;
+}
+.main-content-left >>> .el-scrollbar__thumb {
+  background-color:#333;
+  opacity: 0.1
+}
 .main-content-left
+  position relative
+  height 100%
   .title-panel
+    position absolute
+    left 0
+    top 0
+    right 0
     display flex
     align-items center
     justify-content space-between
@@ -99,14 +194,28 @@ export default {
         background url(../../images/ic_fanhui_normal.png) no-repeat
         background-size 24px
   .content-details
-    display flex
-    flex-wrap wrap
+    position absolute
+    left 0
+    right 0
+    top 44px
+    bottom 64px
+    overflow-y auto
+    overflow-x hidden
   .video-list
+    float left
     margin-right 0.308%
     margin-bottom 0.308%
-    width 12.23%
+    display inline-block
+    vertical-align top
+    width 12.22%
     height 90px
     background-color #DCDCDC
+    font-size 0
+    cursor pointer
+    img
+      display block
+      width 100%
+      height 100%
     &:nth-child(8n)
       margin-right 0
   .return-prev,.return-more
@@ -138,7 +247,10 @@ export default {
   .bottom-area
     height 64px
     text-align center
-    position relative
+    position absolute
+    left 0
+    bottom 0
+    right 0
     .btn
       display inline-block
       height 64px
@@ -166,4 +278,17 @@ export default {
       font-size 20px
       em
         color #1890FF
+  .blank-page
+    position absolute
+    left 50%
+    top 50%
+    transform translate(-50%, -60%)
+    text-align center
+    .blank-image
+      display inline-block
+    .blank-infos
+      line-height 1
+      padding-top 18px
+      font-size 18px
+      color #999
 </style>

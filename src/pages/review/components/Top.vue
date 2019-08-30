@@ -11,7 +11,15 @@
       </el-col>
       <el-col :span="4" class="input-item">
         <label for>通道：</label>
-        <el-input v-model="road" placeholder="请编辑" size="mini"></el-input>
+        <el-select v-model="roadValue" placeholder="请选择">
+          <el-option
+            v-for="item in roadOptions"
+            :key="item.value"
+            :label="item.label"
+            :value="item.value">
+          </el-option>
+        </el-select>
+        <!-- <el-input v-model="road" placeholder="请编辑" size="mini"></el-input> -->
       </el-col>
       <el-col :span="4" class="input-item">
         <label for>开始时间：</label>
@@ -19,6 +27,7 @@
           v-model="startTime"
           align="right"
           type="date"
+          value-format="yyyyMMdd"
           placeholder="选择日期"
         ></el-date-picker>
       </el-col>
@@ -28,27 +37,161 @@
           v-model="endTime"
           align="right"
           type="date"
+          value-format="yyyyMMdd"
           placeholder="选择日期"
         ></el-date-picker>
       </el-col>
       <el-col :span="6" class="input-item button-area">
-        <el-button type="primary" class="button">领取任务</el-button>
-        <el-button class="button">回收任务</el-button>
-        <el-button class="button">查询</el-button>
+        <el-button type="primary" class="button" @click="getUserTasks">领取任务</el-button>
+        <el-button class="button" @click="deleteUserTasks">回收任务</el-button>
+        <el-button class="button" @click="searchUserTasks">查询</el-button>
       </el-col>
     </el-row>
   </div>
 </template>
 <script>
+/* eslint-disable */
+import {
+  getUserTask,
+  deleteUserTask,
+  searchUserTask
+} from '../../api/index.js'
+import { Loading } from 'element-ui';
+import { mutations } from '@/store/store'
 export default {
   name: 'ReviewTop',
   data () {
     return {
       videoId: '',
       userId: '',
-      road: '',
-      startTime: '',
-      endTime: ''
+      roadValue: '12',
+      roadOptions: [
+        {
+          value: '12',
+          label: '优先审核通道'
+        }, {
+          value: '11',
+          label: '普通通道'
+        },
+        {
+          value: '100',
+          label: '低风险通道（低风险易审视频+小视频）'
+        }, {
+          value: '101',
+          label: '机审通道'
+        }
+      ],
+      startTime: new Date(new Date() - 3 * 24 * 60 * 60 * 1000),
+      endTime: new Date()
+    }
+  },
+  methods: {
+    toDouble (val) {
+      return val > 9 ? val : '0' + val
+    },
+    allowClick () {
+      if (this.roadValue === '') {
+        this.$message({
+          message: '请先选择通道~',
+          type: 'error',
+          duration: 2000
+        })
+        return false
+      }
+      return true
+    },
+    // 领取任务
+    getUserTasks () {
+      if(!this.allowClick()){
+        return
+      }
+      this.loading = Loading.service({
+        text: '正在领取中,请稍后...'
+      })
+      getUserTask({
+        userType: this.roadValue,
+        videoId: this.videoId,
+        userId: this.userId,
+        startTime: this.startTime,
+        endTime: this.endTime
+      }).then((res) => {
+        let type = res.code === 1 ? 'success' : 'error'
+        this.$message({
+          message: res.msg,
+          type,
+          duration: 1500
+        })
+        this.searchUserTasks()
+        this.loading.close()
+      })
+    },
+    // 回收任务
+    deleteUserTasks () {
+      if(!this.allowClick()){
+        return
+      }
+      this.loading = Loading.service({
+        text: '正在回收中,请稍后...'
+      });
+      deleteUserTask ({
+        userType: this.roadValue,
+        videoId: this.videoId,
+        userId: this.userId,
+        startTime: this.startTime,
+        endTime: this.endTime
+      }).then((res) => {
+        let type = res.code === 1 ? 'success' : 'error'
+        this.$message({
+          message: res.msg,
+          type,
+          duration: 1500
+        })
+        // 回收结束调用一次查询任务接口
+        this.searchUserTasks(1)
+        this.loading.close()
+      })
+    },
+    // 查询任务
+    searchUserTasks (type) {
+      if(!this.allowClick()){
+        return
+      }
+      // 显示加载
+      this.loading = Loading.service({
+        text: '正在查询中,请稍后...'
+      });
+      searchUserTask({
+        userType: this.roadValue,
+        videoId: this.videoId,
+        userId: this.userId,
+        startTime: this.startTime,
+        endTime: this.endTime
+      }).then((res) => {
+        if (res.code === 1) {
+          if (type !== 1) {
+            this.$message({
+              message: res.msg,
+              type: 'success',
+              duration: 1500
+            })
+          }
+          // 存入store
+          this.setVideoListStore(res.data)
+        } else {
+          this.$message({
+            message: res.msg,
+            type: 'error',
+            duration: 1500
+          })
+        }
+        // 隐藏加载提示
+        this.loading.close()
+      })
+    },
+    setVideoListStore (res) {
+      mutations.setVideoList(res)
+      // 当前序号也归为0
+      mutations.changeIndex(0)
     }
   }
 }

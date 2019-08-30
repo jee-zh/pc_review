@@ -15,14 +15,19 @@ export default {
     ReviewContent
   },
   created () {
-    this.getUserInfo()
+    // this.getUserInfo()
   },
   methods: {
     getUserInfo () {
-      axios.post('/api/screenshot/testOper', {
+      axios.post('http://shenheapi.pxtadmin.com/api/screenshot/testOper', {
         withCredentials: true
-      }).then((res) => {
+      }, {}).then((res) => {
         console.log(res.data)
+        this.$message({
+          message: '请登录',
+          type: 'error',
+          duration: 1500
+        })
       })
     }
   }

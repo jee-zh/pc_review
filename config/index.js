@@ -11,11 +11,11 @@ module.exports = {
     assetsSubDirectory: 'static',
     assetsPublicPath: '/',
     proxyTable: {
-      'api/': {
-        target: 'http://shenheapis.pxtadmin.com',  //目标接口域名
+      '/api': {
+        target: 'http://shenheapi.pxtadmin.com/api/',  //目标接口域名
         changeOrigin: true,
         pathRewrite: {
-          '^/api': '/api'   //重写接口
+          '^/api': ''   //重写接口
         }
       }
     },
@@ -58,13 +58,13 @@ module.exports = {
     // Paths
     assetsRoot: path.resolve(__dirname, '../dist'),
     assetsSubDirectory: 'static',
-    assetsPublicPath: '/',
+    assetsPublicPath: './',
 
     /**
      * Source Maps
      */
 
-    productionSourceMap: true,
+    productionSourceMap: false,
     // https://webpack.js.org/configuration/devtool/#production
     devtool: '#source-map',
 
