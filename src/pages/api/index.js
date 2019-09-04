@@ -1,5 +1,8 @@
 import ajax from './ajax'
-const BASE_URL = 'http://shenheapi.pxtadmin.com'
+// 线上环境
+// const BASE_URL = 'http://shenheapi.pxtadmin.com'
+// 开发环境
+const BASE_URL = ''
 // 领取任务
 export const getUserTask = (params) => ajax(BASE_URL + '/api/screenshot/getTasks', params, 'POST')
 // 回收任务
@@ -8,7 +11,8 @@ export const deleteUserTask = (params) => ajax(BASE_URL + '/api/screenshot/recov
 export const searchUserTask = (params) => ajax(BASE_URL + '/api/screenshot/query', params, 'POST')
 // 返回库
 export const backStockClick = (params) => ajax(BASE_URL + '/api/screenshot/backStock', params, 'POST')
-
+// 批量发布
+export const handlePublicBatch = (params) => ajax(BASE_URL + '/api/screenshot/batchPublish', params, 'POST')
 // 关键词
 // export const getKeyWordDescs = (params) => ajax('/api/screenshot/keyWordTips', params, 'POST')
 window.getKeywordDescription = function (o, keyId) {
@@ -35,5 +39,3 @@ window.getKeywordDescription = function (o, keyId) {
     }
   })
 }
-// 批量发布
-export const handlePublicBatch = (params) => ajax(BASE_URL + '/api/screenshot/batchPublish', params, 'POST')

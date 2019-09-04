@@ -6,10 +6,11 @@
         placement="right-end"
         width="580"
         height="450"
-        trigger="click"
+        trigger="manual"
+        v-model="playerVisible"
         >
-        <iframe :src="videoUrl" frameborder="0" scrolling="no" width="580" height="450"></iframe>
-        <el-button slot="reference" class="title">播放视频</el-button>
+        <iframe :src="videoUrl" frameborder="0" scrolling="no" width="580" height="450" v-if="playerVisible"></iframe>
+        <el-button slot="reference" class="title" @click="handleVideoPlay">播放视频</el-button>
       </el-popover>
       <a href="javascript:void(0)" class="back" @click="returnBack">返回库</a>
     </div>
@@ -17,7 +18,7 @@
       <el-scrollbar style="height:100%">
         <!-- <div class="video-list return-prev">返回上页</div> -->
         <viewer :images="imgArrays">
-          <div class="video-list" v-for="(item,k) of imgArrays" :key="item" v-if="k<imgArrayIndex">
+          <div class="video-list" v-for="(item,k) of imgArrays" :key="item" v-if="k<imgArrayIndex" ref="videoList">
             <img :src="item">
           </div>
         </viewer>
@@ -36,6 +37,7 @@
   </div>
 </template>
 <script>
+/* eslint-disable */
 import { store, mutations } from '@/store/store'
 import { backStockClick } from '../../api/index.js'
 import { Loading } from 'element-ui'
@@ -59,7 +61,9 @@ export default {
       },
       Player: null,
       clickVideo: true,
-      imgArrayIndex: 63,
+      imgArrayIndex: 24,
+      playerVisible: store.playerVisible,
+      // iframeShow: false,
       videoUrl: ''
     }
   },
@@ -76,15 +80,44 @@ export default {
     }
   },
   mounted () {
-    document.onkeydown = () => {
+    document.onkeydown = (e) => {
       if (this.isShow) {
         let key = window.event.keyCode
         if (key === 37) {
           this.handlePageClick(-1)
         } else if (key === 39) {
           this.handlePageClick(1)
+        } else if (key === 38) {
+          mutations.changePlayerShow(true)
+          this.playerVisible = store.playerVisible
+        }else if (key === 40) {
+          mutations.changePlayerShow(false)
+          this.playerVisible = store.playerVisible
         }
       }
+    }
+    // document.body.addEventListener('click', (e) => {
+    //   console.log(88)
+    //   let ev = e || event
+    //   let _target = ev.target || ev.srcElement
+    //   console.log(_target)
+    //   if (!(_target.classList.contains('el-button') && _target.tagName.toLowerCase() === 'span')) {
+    //     console.log('66')
+    //     this.playerVisible = false
+    //   }
+    //   ev.stopPropagation()
+    // })
+  },
+  watch: {
+    videoUrl: {
+      handler (newval, oldval) {
+        if (document.querySelector('.return-more')) {
+          document.querySelectorAll('.video-list')[0].querySelector('img').onload = function () {
+            document.querySelector('.return-more').style.height = document.querySelectorAll('.video-list')[0].clientHeight + 'px'
+          }
+        }
+      },
+      immediate: true
     }
   },
   methods: {
@@ -92,16 +125,41 @@ export default {
     handlePageClick (flag) {
       if (flag === -1) {
         if (this.index > 0) {
+          // 更改当前视频状态再翻页
+          this.changeVideoStatus()
           mutations.changeIndex(store.index - 1)
         }
       } else {
         if (this.index < this.videoBoxData.totalCount - 1) {
+          // 更改当前视频状态再翻页
+          this.changeVideoStatus()
           mutations.changeIndex(store.index + 1)
         }
       }
-      this.$emit('changeRadio')
-      this.imgArrayIndex = 63
+      // this.$emit('changeRadio')
+      this.imgArrayIndex = 24
       this.setVideoUrl()
+      if (document.querySelector('.return-more')) {
+        document.querySelector('.return-more').style.height = document.querySelectorAll('.video-list')[0].clientHeight + 'px'
+      }
+    },
+    changeVideoStatus () {
+      let videoInfos = store.videoList.items[store.index]
+      if ((typeof videoInfos.remarkOne) === 'undefined') {
+        // 视频未被看过，并且没有屏蔽，则通过
+        videoInfos.status = 1
+      } else {
+        // 否则保持原始状态
+        videoInfos.status = 0
+      }
+    },
+    handleVideoPlay () {
+      if (this.playerVisible) {
+        mutations.changePlayerShow(false)
+      } else {
+        mutations.changePlayerShow(true)
+      }
+      this.playerVisible = store.playerVisible
     },
     // 设置视频嵌套地址
     setVideoUrl () {
@@ -207,8 +265,8 @@ export default {
     margin-bottom 0.308%
     display inline-block
     vertical-align top
-    width 12.22%
-    height 90px
+    width 19.7536%
+    height 11.1018%
     background-color #DCDCDC
     font-size 0
     cursor pointer
@@ -216,9 +274,10 @@ export default {
       display block
       width 100%
       height 100%
-    &:nth-child(8n)
+    &:nth-child(5n)
       margin-right 0
   .return-prev,.return-more
+    margin-right 0
     display inline-flex
     background-color #fff
     justify-content center

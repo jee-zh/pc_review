@@ -22,7 +22,6 @@ export default {
       axios.post('http://shenheapi.pxtadmin.com/api/screenshot/testOper', {
         withCredentials: true
       }, {}).then((res) => {
-        console.log(res.data)
         this.$message({
           message: '请登录',
           type: 'error',

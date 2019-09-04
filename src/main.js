@@ -9,6 +9,14 @@ import 'viewerjs/dist/viewer.css'
 import Viewer from 'v-viewer'
 Vue.use(ElementUI)
 Vue.use(Viewer)
+Viewer.setDefaults({
+  'button': false,
+  'navbar': true,
+  'rotatable': false,
+  'transition': false,
+  'scalable': false,
+  'zoomable': false
+})
 Vue.config.productionTip = false
 
 /* eslint-disable no-new */

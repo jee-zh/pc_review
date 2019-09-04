@@ -1,7 +1,8 @@
 import Vue from 'vue'
 export const store = Vue.observable({
   videoList: {},
-  index: 0
+  index: 0,
+  playerVisible: false
 })
 export const mutations = {
   // 视频列表
@@ -21,5 +22,8 @@ export const mutations = {
   },
   changeVideoList (res) {
     store.videoList = res
+  },
+  changePlayerShow (res) {
+    store.playerVisible = res
   }
 }

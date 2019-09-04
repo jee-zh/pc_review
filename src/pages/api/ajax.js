@@ -1,4 +1,5 @@
 import axios from 'axios'
+import qs from 'qs'
 axios.defaults.headers = {
   'Content-Type': 'application/x-www-form-urlencoded'
 }
@@ -23,7 +24,7 @@ export default function ajax (url = '', params = {}, type = 'GET') {
       // 2.4 发送get请求
       promise = axios.get(url)
     } else if (type === 'POST') {
-      promise = axios.post(url, params)
+      promise = axios.post(url, qs.stringify(params))
     }
     // 3. 返回请求的结果
     promise.then((response) => {

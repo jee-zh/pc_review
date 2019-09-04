@@ -27,7 +27,8 @@
           v-model="startTime"
           align="right"
           type="date"
-          value-format="yyyyMMdd"
+          value-format="yyyy-MM-dd"
+          format="yyyy-MM-dd"
           placeholder="选择日期"
         ></el-date-picker>
       </el-col>
@@ -37,14 +38,15 @@
           v-model="endTime"
           align="right"
           type="date"
-          value-format="yyyyMMdd"
+          value-format="yyyy-MM-dd"
+          format="yyyy-MM-dd"
           placeholder="选择日期"
         ></el-date-picker>
       </el-col>
       <el-col :span="6" class="input-item button-area">
-        <el-button type="primary" class="button" @click="getUserTasks">领取任务</el-button>
-        <el-button class="button" @click="deleteUserTasks">回收任务</el-button>
-        <el-button class="button" @click="searchUserTasks">查询</el-button>
+        <el-button type="primary" class="button" @click="getUserTasks($event)">领取任务</el-button>
+        <el-button class="button" @click="deleteUserTasks($event)">回收任务</el-button>
+        <el-button class="button" @click="searchUserTasks(2, $event)">查询</el-button>
       </el-col>
     </el-row>
   </div>
@@ -64,13 +66,13 @@ export default {
     return {
       videoId: '',
       userId: '',
-      roadValue: '12',
+      roadValue: '11',
       roadOptions: [
         {
-          value: '12',
+          value: '11',
           label: '优先审核通道'
         }, {
-          value: '11',
+          value: '12',
           label: '普通通道'
         },
         {
@@ -81,9 +83,12 @@ export default {
           label: '机审通道'
         }
       ],
-      startTime: new Date(new Date() - 3 * 24 * 60 * 60 * 1000),
+      startTime: new Date(new Date() - 30 * 24 * 60 * 60 * 1000),
       endTime: new Date()
     }
+  },
+  mounted () {
+    
   },
   methods: {
     toDouble (val) {
@@ -101,45 +106,65 @@ export default {
       return true
     },
     // 领取任务
-    getUserTasks () {
+    getUserTasks (event) {
+      event.target.blur();
+      event.preventDefault();
       if(!this.allowClick()){
         return
       }
       this.loading = Loading.service({
         text: '正在领取中,请稍后...'
       })
-      getUserTask({
+      let startTime = this.startTime
+      let endTime = this.endTime
+      if (typeof startTime === 'object') {
+        startTime = this.formatime(startTime)
+      }
+      if (typeof endTime === 'object') {
+        endTime = this.formatime(endTime)
+      }
+      let data = {
         userType: this.roadValue,
         videoId: this.videoId,
         userId: this.userId,
-        startTime: this.startTime,
-        endTime: this.endTime
-      }).then((res) => {
+      }
+      Object.assign(data, {startTime}, {endTime})
+      getUserTask(data).then((res) => {
         let type = res.code === 1 ? 'success' : 'error'
         this.$message({
           message: res.msg,
           type,
           duration: 1500
         })
-        this.searchUserTasks()
+        this.searchUserTasks(1, this.$event)
         this.loading.close()
       })
     },
     // 回收任务
-    deleteUserTasks () {
+    deleteUserTasks (event) {
+      event.target.blur();
+      event.preventDefault();
       if(!this.allowClick()){
         return
       }
       this.loading = Loading.service({
         text: '正在回收中,请稍后...'
-      });
-      deleteUserTask ({
+      })
+      let startTime = this.startTime
+      let endTime = this.endTime
+      if (typeof startTime === 'object') {
+        startTime = this.formatime(startTime)
+      }
+      if (typeof endTime === 'object') {
+        endTime = this.formatime(endTime)
+      }
+      let data = {
         userType: this.roadValue,
         videoId: this.videoId,
         userId: this.userId,
-        startTime: this.startTime,
-        endTime: this.endTime
-      }).then((res) => {
+      }
+      Object.assign(data, {startTime}, {endTime})
+      deleteUserTask (data).then((res) => {
         let type = res.code === 1 ? 'success' : 'error'
         this.$message({
           message: res.msg,
@@ -147,12 +172,19 @@ export default {
           duration: 1500
         })
         // 回收结束调用一次查询任务接口
-        this.searchUserTasks(1)
+        this.searchUserTasks(1, this.$event)
         this.loading.close()
       })
     },
+    formatime (time) {
+      return time.getFullYear() + '-' + this.toDouble(time.getMonth()+1) + '-' + this.toDouble(time.getDate())
+    },
     // 查询任务
-    searchUserTasks (type) {
+    searchUserTasks (type, event) {
+      if (event) {
+        event.target.blur()
+        event.preventDefault()
+      }
       if(!this.allowClick()){
         return
       }
@@ -160,13 +192,21 @@ export default {
       this.loading = Loading.service({
         text: '正在查询中,请稍后...'
       });
-      searchUserTask({
+      let startTime = this.startTime
+      let endTime = this.endTime
+      if (typeof startTime === 'object') {
+        startTime = this.formatime(startTime)
+      }
+      if (typeof endTime === 'object') {
+        endTime = this.formatime(endTime)
+      }
+      let data = {
         userType: this.roadValue,
         videoId: this.videoId,
         userId: this.userId,
-        startTime: this.startTime,
-        endTime: this.endTime
-      }).then((res) => {
+      }
+      Object.assign(data, {startTime}, {endTime})
+      searchUserTask(data).then((res) => {
         if (res.code === 1) {
           if (type !== 1) {
             this.$message({
@@ -184,6 +224,7 @@ export default {
             duration: 1500
           })
         }
+        mutations.changePlayerShow(false)
         // 隐藏加载提示
         this.loading.close()
       })

@@ -26,7 +26,7 @@
         </li>
       </ul>
     </div>
-    <div class="handle-area">
+    <div class="handle-area" :class="status">
       <!-- failed  succed -->
       <div class="tips-title">操作</div>
       <div class="handle-list-title">屏蔽理由</div>
@@ -96,6 +96,7 @@
         </el-input>
       </div>
       <el-row class="public-area">
+        <el-button type="primary" @click="handleCancle">取消屏蔽</el-button>
         <el-button type="info" plain disabled v-if="batchRelease">批量发布</el-button>
         <el-button type="primary" v-else @click="handlePublicClick">批量发布</el-button>
       </el-row>
@@ -104,6 +105,7 @@
   </div>
 </template>
 <script>
+/* eslint-disable */
 import { store, mutations } from '@/store/store'
 import { handlePublicBatch } from '../../api/index.js'
 import { Loading } from 'element-ui'
@@ -170,6 +172,9 @@ export default {
         }, {
           value: '5',
           label: '后台无法播放导致前台有安全风险'
+        }, {
+          value: '6',
+          label: '限制传播内容'
         }
       ],
       // 低俗
@@ -184,7 +189,8 @@ export default {
         }
       ],
       remark: '',
-      publishFlag: true
+      publishFlag: true,
+      status: ''
     }
   },
   computed: {
@@ -217,10 +223,9 @@ export default {
     }
   },
   watch: {
-    radio () {
+    radio (newval, oldval) {
       var lists = store.videoList
       if (!lists.items) { return }
-      // lists.items[store.index].refuseID = this.radio
       lists.items[store.index].refuseItemName = this.radio
       lists.items[store.index].refuseMsg = this.radio === '影响观看效果' ? this.watchValue : (this.radio === '侵权版权' ? this.tortValue : (this.radio === '违反视频管理规范' ? this.standardValue : this.lowValue))
       this.watchValue = ''
@@ -228,6 +233,16 @@ export default {
       this.standardValue = ''
       this.lowValue = ''
       mutations.changeVideoList(lists)
+      if (newval !== 0) {
+        if (newval === '0'){
+          // 已同意
+          this.changeValueAuto('status', 1)
+        } else {
+          // 拒绝
+        this.changeValueAuto('status', 2)
+        }
+      }
+      this.videoStatus()
     },
     currentIndex () {
       // 页码变动触发操作内的表单信息
@@ -247,19 +262,25 @@ export default {
       } else if (this.radio === '低俗内容') {
         this.lowValue = refuseMsg
       }
+      // 页码变动时，获取当前视频的状态来控制背景颜色
+      if (this.videoInfos.status === 1) {
+        this.status = 'succed'
+      } else {
+        this.status = ''
+      }
     },
     // 四个选择框根据选择内容更改拒绝旅游
     watchValue () {
-      this.changeValueAuto('refuseMsg', this.watchOptions[this.watchValue - 1].label)
+      this.changeValueAuto('refuseMsg', this.watchOptions[this.watchValue - 1] ? this.watchOptions[this.watchValue - 1].label : '')
     },
     tortValue () {
-      this.changeValueAuto('refuseMsg', this.tortOptions[this.tortValue - 1].label)
+      this.changeValueAuto('refuseMsg', this.tortOptions[this.tortValue - 1] ? this.tortOptions[this.tortValue - 1].label : '')
     },
     standardValue () {
-      this.changeValueAuto('refuseMsg', this.standardOptions[this.standardValue - 1].label)
+      this.changeValueAuto('refuseMsg', this.standardOptions[this.standardValue - 1] ? this.standardOptions[this.standardValue - 1].label : '')
     },
     lowValue () {
-      this.changeValueAuto('refuseMsg', this.lowOptions[this.lowValue - 1].label)
+      this.changeValueAuto('refuseMsg', this.lowOptions[this.lowValue - 1].label ? this.lowOptions[this.lowValue - 1].label : '')
     },
     remark () {
       this.changeValueAuto('remark', this.remark)
@@ -274,7 +295,71 @@ export default {
       // 触发更改
       mutations.changeVideoList(lists)
     },
+    videoStatus () {
+      // 根据当前屏蔽旅游，来更改背景颜色
+      let status = store.videoList.items[store.index].status
+      if (typeof status === undefined || status === 0) {
+        this.status =  ''
+      } else if (status === 1) {
+        // 1成功
+        this.status = 'succed'
+      } else if (status === 2) {
+        // 拒绝
+        this.status = 'failed'
+      }
+    },
+    // 取消当前视频屏蔽
+    handleCancle () {
+      
+      let lists = this.videoInfos
+      this.radio = '0'
+      this.watchValue = ''
+      this.tortValue = ''
+      this.standardValue = ''
+      this.lowValue = ''
+      this.status = 'succed'
+      if (!lists.items) { return }
+      lists.items[store.index].refuseMsg = ''
+      lists.items[store.index].remark = ''
+      this.changeValueAuto('status', 1)
+    },
     // 批量发布
+    ajax (options) {
+      var xhr = null;
+      var params = formsParams(options.data);
+      //创建对象
+      if(window.XMLHttpRequest){
+        xhr = new XMLHttpRequest()
+      } else {
+        xhr = new ActiveXObject("Microsoft.XMLHTTP");
+      }
+      // 连接
+      if(options.type == "GET"){
+        xhr.open(options.type,options.url + "?"+ params,options.async);
+        xhr.send(null)
+      } else if(options.type == "POST"){
+        xhr.withCredentials = true
+        xhr.open(options.type,options.url,options.async);
+        xhr.setRequestHeader("Content-Type","application/x-www-form-urlencoded");
+        xhr.send(params);
+      }
+      xhr.onreadystatechange = function(){
+        if(xhr.readyState == 4){
+          if (xhr.status == 200) {
+            options.success(xhr.responseText);
+          }else{
+            options.fail && options.fail(xhr.status);
+          }
+        }
+      }
+      function formsParams(data){
+        var arr = [];
+        for(var prop in data){
+          arr.push(prop + "=" + data[prop]);
+        }
+        return arr.join("&");
+      }
+    },
     handlePublicClick () {
       if (!this.publishFlag) { return }
       this.loading = Loading.service({
@@ -293,11 +378,45 @@ export default {
         videoArr.push(list)
       })
       console.log(JSON.stringify(videoArr))
+
+      // this.ajax({
+      //   url: 'http://shenheapi.pxtadmin.com/api/screenshot/batchPublish',
+      //   type: 'POST',
+      //   async: true,
+      //   data: {
+      //     publishdata: JSON.stringify(videoArr)
+      //   },
+      //   success: (res) => {
+      //     console.log(res)
+      //     let type = JSON.parse(res).code === 1 ? 'success' : 'error'
+      //     this.$message({
+      //       message: res.msg,
+      //       type,
+      //       duration: 1500
+      //     })
+      //     this.publishFlag = true
+      //     this.loading.close()
+      //   },
+      //   fail: (e) => {
+      //     console.log(e)
+      //     this.$message({
+      //       message: '发布失败',
+      //       type: 'error',
+      //       duration: 1500
+      //     })
+      //     if (e.code === 1) {
+      //       mutations.changeVideoList({})
+      //     }
+      //     this.publishFlag = true
+      //     this.loading.close()
+      //   }
+      // })
+      // return
       // 批量发布接口
+      // encodeURI(JSON.stringify(videoArr))
       handlePublicBatch({
-        pdata: videoArr
+        publishdata: JSON.stringify(videoArr)
       }).then((res) => {
-        console.log(res)
         let type = res.code === 1 ? 'success' : 'error'
         this.$message({
           message: res.msg,
@@ -307,7 +426,6 @@ export default {
         this.publishFlag = true
         this.loading.close()
       }).catch((e) => {
-        console.log(e)
         this.$message({
           message: '发布失败',
           type: 'error',
